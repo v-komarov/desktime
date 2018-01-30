@@ -1,29 +1,33 @@
+#!/usr/bin/python3
 #coding: utf-8
 
-from Tkinter import *
+from tkinter import *
 import json
-import urllib
+import requests
+from functools import partial
 
+#import myconfig
+server = "10.6.0.22:8000/working/jsondata/"
 
-server = "127.0.0.1:8000/working/jsondata/"
+#server = myconfig.server
 
 
 
 
 def get_status():
 
-    query_args = {"action": "get-desk-statuses"}
-    encoded_args = urllib.urlencode(query_args)
+    args = {"action": "get-desk-statuses"}
+    req = requests.get("http://%s" % server, params=args)
 
-    req = urllib.urlopen("http://%s?%s" % (server,encoded_args))
-
-    return json.loads(req.read())
+    return json.loads(req.text)
 
 
 
 
 
-class mainwin:
+
+
+class mainwin():
 
     def __init__(self):
 
@@ -33,7 +37,16 @@ class mainwin:
 
         if data["result"] == "ok":
             self.root.title(data["user"])
+            self.lbl1 = Label(self.root, text=u"")
+            self.lbl1.grid(row=0,column=1)
+            self.btn1 = Button(self.root, text=u"", command=self.empty)
+            self.btn1.grid(row=1,column=1)
+            self.btn2 = Button(self.root, text=u"", command=self.empty)
+            self.btn2.grid(row=2,column=1)
+
             self.buttons(data)
+            self.create_evt_button(data)
+
         else:
             self.root.title("Error")
 
@@ -43,29 +56,102 @@ class mainwin:
     def buttons(self,data):
 
         if data["relax"] == u"no" and data["work"] == u"yes":
-            if self.button_start_work.winfo_exists() : self.button_start_work.destroy()
-            if self.button_start_relax.winfo_exists() : self.button_start_relax.destroy()
-            if self.button_stop_relax.winfo_exists() : self.button_stop_relax.destroy()
-            self.button_stop_work = Button(self.root, text=u'Завершить работу').grid(row=1, column=1)
-        elif data["relax"] == u"yes" and data["work"] == u"yes":
-            self.button_stop_relax = Button(self.root, text=u'Завершить перерыв').grid(row=1, column=1)
-        elif data["relax"] == u"no" and data["work"] == u"no":
-            if self.button_stop_work.winfo_viewable() : self.button_stop_work.destroy()
-            if self.button_stop_relax.winfo_viewable() : self.button_stop_relax.destroy()
-            if self.button_start_relax.winfo_viewable() : self.button_start_relax.destroy()
-            self.button_start_work = Button(self.root, text = u'Начать работу').grid(row = 1, column = 1, command=self.start_work)
-        elif data["relax"] == u"yes" and data["work"] == u"no":
-            self.button_start_relax = Button(self.root, text = u'Начать перерыв').grid(row = 1, column = 1)
+            self.lbl1.config(text=u"Статус: Работа")
+            self.btn1.config(text=u'Завершить работу', command=self.end_work)
+            self.btn2.config(text=u'Начать перерыв', command=self.start_relax)
 
+        elif data["relax"] == u"yes" and data["work"] == u"yes":
+            self.lbl1.config(text=u"Статус: Перерыв")
+            self.btn1.config(text=u'Завершить перерыв', command=self.end_relax)
+            self.btn2.config(text=u'', command=self.empty)
+
+        elif data["work"] == u"no":
+            self.lbl1.config(text=u"Статус: Нет")
+            self.btn1.config(text = u'Начать работу', command=self.start_work)
+            self.btn2.config(text=u'', command=self.empty)
+
+        elif data["relax"] == u"yes" and data["work"] == u"no":
+            self.lbl1.config(text=u"Статус: Нет")
+            self.btn1.config(text = u'Начать', command=self.start_work)
+            self.btn2.config(text=u'', command=self.empty)
+
+
+
+
+    def empty(self):
+        pass
 
 
     ### Нажать кнопку начало работы
     def start_work(self):
+        args = {"action": "work-desk-start"}
 
-        query_args = {"action": "get-desk-statuses"}
-        encoded_args = urllib.urlencode(query_args)
+        req = requests.get("http://%s" % server, params=args)
+        if json.loads(req.text)["result"] == u"ok":
+            data = get_status()
+            self.buttons(data)
 
-        req = urllib.urlopen("http://%s?%s" % (server, encoded_args))
+
+    ### Завершение работы
+    def end_work(self):
+        args = {"action": "work-desk-end"}
+
+        req = requests.get("http://%s" % server, params=args)
+
+        if json.loads(req.text)["result"] == u"ok":
+            data = get_status()
+            self.buttons(data)
+
+
+
+    ### Начать перерыв
+    def start_relax(self):
+        args = {"action": "relax-desk-start"}
+
+        req = requests.get("http://%s" % server, params=args)
+        if json.loads(req.text)["result"] == u"ok":
+            data = get_status()
+            self.buttons(data)
+
+
+
+    ### Закончить перерыв
+    def end_relax(self):
+        args = {"action": "relax-desk-end"}
+
+        req = requests.get("http://%s" % server, params=args)
+        if json.loads(req.text)["result"] == u"ok":
+            data = get_status()
+            self.buttons(data)
+
+
+
+
+    ### Формирование кнопок отметки событий
+    def create_evt_button(self, data):
+        row = 3
+        self.button_name = {}
+        for evt in data["evt_btn"]:
+            action_with_arg = partial(self.evt_button, evt["id"])
+            n = eval("Button(self.root,text=u'%s', command=action_with_arg)" % evt["name"])
+            n.grid(row=row, column=1)
+            self.button_name[evt["id"]] = n
+            row+=1
+
+
+    ### Обработка нажатий кнопок отметки событий
+    def evt_button(self,evtid):
+
+        args = {"action": "evt-desk",    "evtid": evtid}
+
+        req = requests.get("http://%s" % server, params=args)
+        result = json.loads(req.text)
+        if result["result"] == u"ok":
+            self.button_name[evtid].config(text=u"%s (%s)" % (result["name"],result["count"]))
+
+
+
+
 
 
 if __name__ == "__main__":
