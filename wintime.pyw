@@ -6,10 +6,10 @@ import json
 import requests
 from functools import partial
 
-#import myconfig
-server = "10.6.0.22:8000/working/jsondata/"
+import myconfig
+#server = "10.6.0.22:8000/working/jsondata/"
 
-#server = myconfig.server
+server = myconfig.server
 
 
 
@@ -42,7 +42,7 @@ class mainwin():
             self.btn1 = Button(self.root, text=u"", command=self.empty)
             self.btn1.grid(row=1,column=1)
             self.btn2 = Button(self.root, text=u"", command=self.empty)
-            self.btn2.grid(row=2,column=1)
+            #self.btn2.grid(row=2,column=1)
 
             self.buttons(data)
             self.create_evt_button(data)
@@ -56,24 +56,21 @@ class mainwin():
     def buttons(self,data):
 
         if data["relax"] == u"no" and data["work"] == u"yes":
-            self.lbl1.config(text=u"Статус: Работа")
-            self.btn1.config(text=u'Завершить работу', command=self.end_work)
-            self.btn2.config(text=u'Начать перерыв', command=self.start_relax)
+            self.lbl1.config(text=u"Статус: Работа", foreground='red')
+            self.btn1.config(text=u'Завершить работу', foreground='blue', command=self.end_work)
+            self.btn2.grid(row=2,column=1)
+            self.btn2.config(text=u'Начать перерыв', foreground='green', command=self.start_relax)
 
         elif data["relax"] == u"yes" and data["work"] == u"yes":
-            self.lbl1.config(text=u"Статус: Перерыв")
-            self.btn1.config(text=u'Завершить перерыв', command=self.end_relax)
-            self.btn2.config(text=u'', command=self.empty)
+            self.lbl1.config(text=u"Статус: Перерыв",  foreground='green')
+            self.btn1.config(text=u'Завершить перерыв', foreground='red', command=self.end_relax)
+            self.btn2.grid_forget()
 
         elif data["work"] == u"no":
-            self.lbl1.config(text=u"Статус: Нет")
-            self.btn1.config(text = u'Начать работу', command=self.start_work)
-            self.btn2.config(text=u'', command=self.empty)
+            self.lbl1.config(text=u"Статус: Нет",  foreground='black')
+            self.btn1.config(text = u'Начать работу', foreground='red', command=self.start_work)
+            self.btn2.grid_forget()
 
-        elif data["relax"] == u"yes" and data["work"] == u"no":
-            self.lbl1.config(text=u"Статус: Нет")
-            self.btn1.config(text = u'Начать', command=self.start_work)
-            self.btn2.config(text=u'', command=self.empty)
 
 
 
