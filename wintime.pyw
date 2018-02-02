@@ -33,6 +33,7 @@ class mainwin():
 
         self.root = Tk()
 
+        self.root.geometry('-0-0')
         data = get_status()
 
         if data["result"] == "ok":
