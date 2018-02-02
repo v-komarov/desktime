@@ -34,6 +34,7 @@ class mainwin():
         self.root = Tk()
 
         self.root.geometry('-0-0')
+        self.root.attributes('-topmost', True)
         data = get_status()
 
         if data["result"] == "ok":
