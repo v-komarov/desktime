@@ -27,6 +27,57 @@ def get_status():
 
 
 
+
+# Авторизация
+class auth():
+
+    def __init__(self):
+
+        self.root = Tk()
+
+        self.root.title("Регистрация")
+
+        name_label = Label(self.root, text=u"Логин:")
+        name_label.grid(row=0, column=0, sticky=(N, W))
+        name = Entry(self.root)
+        name.grid(row=0, column=1)
+
+        passwd_label = Label(self.root, text=u"Пароль:")
+        passwd_label.grid(row=1, column=0, sticky=(N, W))
+        passwd = Entry(self.root, textvariable=StringVar(), show="*")
+        passwd.grid(row=1, column=1)
+
+        phone_label = Label(self.root, text=u"Телефон:")
+        phone_label.grid(row=2, column=0, sticky=(N, W))
+        phone = Entry(self.root)
+        phone.grid(row=2, column=1)
+
+        btn1 = Button(self.root, text=u"Регистрация", command=lambda: self.auth_request(name.get(), passwd.get(), phone.get()))
+        btn1.grid(row=3, column=1)
+
+        self.root.mainloop()
+
+
+
+
+
+
+    # Запрос авторизации
+    def auth_request(self, name, passwd, phone):
+
+        args = {"action": "auth-desk-ip", "desktop_name":name, "desktop_passwd": passwd, "desktop_phone": phone}
+        req = requests.get("http://%s" % server, params=args)
+
+        result = json.loads(req.text)
+        if result["result"] == "ok":
+            self.root.destroy()
+            mainwin()
+
+
+
+
+
+
 class mainwin():
 
     def __init__(self):
@@ -155,5 +206,5 @@ class mainwin():
 
 if __name__ == "__main__":
 
-    mainwin()
+    auth()
 
