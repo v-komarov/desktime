@@ -4,13 +4,14 @@
 from tkinter import *
 import json
 import requests
+import shelve
 from functools import partial
 
 import myconfig
-#server = "10.6.0.22:8000/working/jsondata/"
+
 
 server = myconfig.server
-
+db_file = myconfig.db_file
 
 
 
@@ -23,6 +24,12 @@ def get_status():
 
 
 
+def get_events():
+
+    args = {"action": "get-desk-events"}
+    req = requests.get("http://%s" % server, params=args)
+
+    return json.loads(req.text)
 
 
 
@@ -37,19 +44,32 @@ class auth():
 
         self.root.title("Регистрация")
 
+        ### Восстановление сохранненой информации
+        db = shelve.open(db_file)
+        dbkeys = db.keys()
+        username_db = db["username"] if "username" in dbkeys else ""
+        passwd_db = db["passwd"] if "passwd" in dbkeys else ""
+        phone_db = db["phone"] if "phone" in dbkeys else ""
+        db.close()
+
+        username_db = StringVar(self.root, value=username_db)
+        passwd_db = StringVar(self.root, value=passwd_db)
+        phone_db = StringVar(self.root, value=phone_db)
+
+
         name_label = Label(self.root, text=u"Логин:")
         name_label.grid(row=0, column=0, sticky=(N, W))
-        name = Entry(self.root)
+        name = Entry(self.root, textvariable=username_db)
         name.grid(row=0, column=1)
 
         passwd_label = Label(self.root, text=u"Пароль:")
         passwd_label.grid(row=1, column=0, sticky=(N, W))
-        passwd = Entry(self.root, textvariable=StringVar(), show="*")
+        passwd = Entry(self.root, textvariable=passwd_db, show="*")
         passwd.grid(row=1, column=1)
 
         phone_label = Label(self.root, text=u"Телефон:")
         phone_label.grid(row=2, column=0, sticky=(N, W))
-        phone = Entry(self.root)
+        phone = Entry(self.root, textvariable=phone_db)
         phone.grid(row=2, column=1)
 
         btn1 = Button(self.root, text=u"Регистрация", command=lambda: self.auth_request(name.get(), passwd.get(), phone.get()))
@@ -70,6 +90,13 @@ class auth():
 
         result = json.loads(req.text)
         if result["result"] == "ok":
+
+            db = shelve.open(db_file)
+            db["username"] = name
+            db["passwd"] = passwd
+            db["phone"] = phone
+            db.close()
+
             self.root.destroy()
             mainwin()
 
@@ -88,20 +115,32 @@ class mainwin():
         self.root.attributes('-topmost', True)
         data = get_status()
 
+        ### Словарь кодов и названий событий
+        self.evt_btns = {}
+        for b in data["evt_btn"]:
+            index = b["id"]
+            value = b["name"]
+            self.evt_btns[index] = value
+
+        #print(self.evt_button)
+
         if data["result"] == "ok":
             self.root.title(data["user"])
+            self.lbl0 = Label(self.root, text=u"")
+            self.lbl0.grid(row=0,column=1)
             self.lbl1 = Label(self.root, text=u"")
-            self.lbl1.grid(row=0,column=1)
+            self.lbl1.grid(row=1,column=1)
             self.btn1 = Button(self.root, text=u"", command=self.empty)
-            self.btn1.grid(row=1,column=1)
+            self.btn1.grid(row=2,column=1)
             self.btn2 = Button(self.root, text=u"", command=self.empty)
-            #self.btn2.grid(row=2,column=1)
 
             self.buttons(data)
             self.create_evt_button(data)
 
         else:
             self.root.title("Error")
+
+        self.Freshdata()
 
         self.root.mainloop()
 
@@ -111,7 +150,7 @@ class mainwin():
         if data["relax"] == u"no" and data["work"] == u"yes":
             self.lbl1.config(text=u"Статус: Работа", foreground='red')
             self.btn1.config(text=u'Завершить работу', foreground='blue', command=self.end_work)
-            self.btn2.grid(row=2,column=1)
+            self.btn2.grid(row=3,column=1)
             self.btn2.config(text=u'Начать перерыв', foreground='green', command=self.start_relax)
 
         elif data["relax"] == u"yes" and data["work"] == u"yes":
@@ -125,6 +164,28 @@ class mainwin():
             self.btn2.grid_forget()
 
 
+    #### Получение текущих статусов по времени работы , событиям
+    def Freshdata(self):
+        try:
+            data = get_events()
+            if data["result"] == "ok":
+
+                ### Длительность работы
+                dur = data["dur"]
+                h = dur // 60
+                m = dur % 60
+                self.lbl0.config(text="%s ч. %s м." % (h,m))
+
+                ### Отрисовка количества событий на кнопках
+                for b in data["events"]:
+                    btn_id = b["mark"]
+                    btn_name = self.evt_btns[btn_id]
+                    btn_count = b["mark__count"]
+                    self.button_name[btn_id].config(text=u"%s (%s)" % (btn_name, btn_count))
+
+        except: pass
+        #print("it works!")
+        self.root.after(5000, self.Freshdata)
 
 
 
@@ -179,7 +240,7 @@ class mainwin():
 
     ### Формирование кнопок отметки событий
     def create_evt_button(self, data):
-        row = 3
+        row = 4
         self.button_name = {}
         for evt in data["evt_btn"]:
             action_with_arg = partial(self.evt_button, evt["id"])
@@ -207,4 +268,3 @@ class mainwin():
 if __name__ == "__main__":
 
     auth()
-
